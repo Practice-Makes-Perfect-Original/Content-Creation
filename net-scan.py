@@ -54,7 +54,8 @@ def main():
       "such as the Computer Fraud and Abuse Act (CFAA) and other cybersecurity policies.\n"
       "The author assumes no responsibility for misuse, illegal activity, or damages caused by this software. "
       "Always ensure you have explicit permission before running this script on any network.\n\n"
-      "By using this tool, you agree to use it ethically, responsibly, and within legal boundaries.")
+      "By using this tool, you agree to use it ethically, responsibly, and within legal boundaries."
+    )
 
     parser = argparse.ArgumentParser(description="Ping Sweep Network Scanner")
     parser.add_argument("-s", "--subnet", type=int, choices=[16, 24], required=True, help="Subnet to scan (16 or 24)")
