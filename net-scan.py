@@ -39,7 +39,7 @@ def scan_network(ip_range, mode):
     live_hosts = []
     timeout = {"stealth": 1000, "normal": 500, "aggressive": 200}.get(mode, 500)
     
-    print(f"[INFO] Scanning network with {mode} mode (timeout={timeout}ms)")
+    print(f"[INFO] Scanning network with {mode} mode (timeout={timeout}ms) [please be patient, (4-6 minute wait time)]")
     for ip in ip_range:
         if ping_host(ip, timeout):
             live_hosts.append(ip)
