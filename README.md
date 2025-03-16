@@ -1,37 +1,42 @@
-# Keaton's GitHub
+Keaton's GitHub
 
-Welcome! I'm a cybersecurity student focused on penetration testing, AI development, and secure system design. I build practical tools, automate security tasks, and explore low-level programming.
+Welcome to my GitHub. I'm a cybersecurity student specializing in penetration testing, AI-driven security automation, and secure system design. My work revolves around developing practical tools, automating security workflows, and exploring low-level programming to enhance security research and offensive testing.
+Core Areas of Interest
 
-## 🔥 Interests
-- **Penetration Testing** – Developing exploit scripts and automation tools.
-- **Reverse Engineering** – Analyzing binaries and firmware.
-- **AI & Automation** – Creating intelligent security tools and chatbots.
-- **Cryptography** – Implementing strong encryption techniques.
-- **Networking & Wireless Security** – Securing Wi-Fi, OpenWRT, and network monitoring.
-- **Linux & System Programming** – Writing scripts and tools for efficiency and security.
+    Penetration Testing & Exploit Development – Writing custom scripts for reconnaissance, exploitation, and post-exploitation automation.
+    Reverse Engineering & Binary Analysis – Deconstructing firmware, disassembling binaries, and uncovering vulnerabilities.
+    AI for Cybersecurity – Developing intelligent security automation, training LLM-based assistants, and integrating AI into security workflows.
+    Cryptography & Secure Development – Implementing strong encryption techniques and designing air-gapped security solutions.
+    Networking & Wireless Security – Enhancing OpenWRT security, monitoring network traffic, and securing Wi-Fi infrastructure.
+    Linux & System Programming – Writing efficient scripts, custom kernel modules, and security tools for automation and analysis.
 
-## 🚀 Active & Upcoming Projects
-### 🔧 **Cybersecurity & Networking**
-- **OpenWRT Security Suite** – Automating secure AP setup with firewall and IDS/IPS.
-- **Penetration Testing Scripts** – Custom scripts for recon, exploitation, and post-exploitation.
-- **Secure Boot Kali Setup** – Configuring Kali Linux with Secure Boot.
+Current & Upcoming Projects
+Cybersecurity & Networking
 
-### 🤖 **AI & Automation**
-- **Custom LLM** – Training a chatbot for security research and automation.
-- **Automated OSINT Scanner** – Gathering intelligence via web scraping and APIs.
+    OpenWRT Security Suite – Automating secure access point setup with firewall rules, intrusion detection, and network hardening.
+    Penetration Testing Toolkit – Developing scripts for vulnerability assessment, exploit delivery, and privilege escalation.
+    Secure Boot Kali Linux – Configuring Kali Linux for full Secure Boot compatibility without compromising offensive security tools.
 
-### 🔑 **Cryptography & Secure Development**
-- **AES256 File Encryption Tool** – GUI-based encryption with USB key management.
-- **Air-Gapped Encryption System** – Offline encryption tool for secure data handling.
+AI & Automation
 
-### 📡 **Wireless & Radio Security**
-- **Wi-Fi Threat Detection** – Automated alerts for deauth attacks and rogue APs.
-- **HackRF Research** – Scripting SDR-based security tests.
+    Custom Large Language Model (LLM) for Security – Training a chatbot designed for security research, automation, and real-time analysis.
+    Automated OSINT Framework – Gathering intelligence through web scraping, API integrations, and AI-driven pattern recognition.
 
-### 🛠 **Low-Level & Reverse Engineering**
-- **Firmware Exploitation Toolkit** – Automating analysis of IoT firmware.
-- **Custom Kernel Modules** – Writing security-focused Linux modules.
+Cryptography & Secure Development
 
-## 📫 Connect
-If you're into scripting, AI, or cybersecurity tools, let’s collaborate!
+    AES256 File Encryption Tool – GUI-based encryption system with USB key authentication for secure file storage.
+    Air-Gapped Encryption System – Offline encryption tool designed for handling highly sensitive data in isolated environments.
 
+Wireless & Radio Security
+
+    Wi-Fi Threat Detection System – Developing real-time monitoring and alerting for rogue access points and deauthentication attacks.
+    HackRF Research & SDR Security – Automating software-defined radio (SDR) security testing and expanding wireless attack simulations.
+
+Low-Level Programming & Reverse Engineering
+
+    Firmware Exploitation Toolkit – Automating static and dynamic analysis of IoT firmware images to uncover security weaknesses.
+    Custom Kernel Modules for Security – Writing Linux kernel extensions to enhance security monitoring and system control.
+
+Get Involved
+
+If you're interested in security automation, AI-driven cybersecurity, or low-level programming, let’s collaborate. I'm always looking to push the boundaries of offensive security, secure development, and intelligent automation. Reach out to discuss ideas, contribute to projects, or explore security research together.
