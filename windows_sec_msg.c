@@ -20,7 +20,7 @@
 #define SP_PROT_TLS1_2 0x00000800
 #define UNISP_NAME "Microsoft Unified Security Protocol Provider"
 
-// Manually define SCHANNEL_CRED because mingw doesnt provide it
+// manually define SCHANNEL_CRED because mingw doesnt provide it
 typedef struct _SCHANNEL_CRED {
     DWORD dwVersion;
     DWORD cCreds;
@@ -38,7 +38,7 @@ typedef struct _SCHANNEL_CRED {
     DWORD dwCredFormat;
 } SCHANNEL_CRED;
 
-// GUI Elements
+// Gui Elements
 HWND hwnd, hChatBox, hMessageBox, hSendButton, hIPBox, hConnectButton, hWaitButton, hPortBox;
 HBRUSH hbrBkgnd;
 SOCKET global_socket;
@@ -46,7 +46,7 @@ CredHandle hCred;
 CtxtHandle hCtxt;
 int isServer = 0;
 
-// Function Declarations
+// Function declarations
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 DWORD WINAPI ServerThread(LPVOID param);
 DWORD WINAPI ClientThread(LPVOID param);
@@ -54,7 +54,7 @@ void SendMessageGUI();
 SECURITY_STATUS InitTLS(SOCKET sock, int isServer);
 void CleanupTLS();
 
-// Initialize TLS (Schannel)
+// Initialize tls (Schannel)
 SECURITY_STATUS InitTLS(SOCKET sock, int isServer) {
     SCHANNEL_CRED schCred;
     memset(&schCred, 0, sizeof(schCred));
@@ -66,7 +66,7 @@ SECURITY_STATUS InitTLS(SOCKET sock, int isServer) {
         NULL, &schCred, NULL, NULL, &hCred, NULL);
 }
 
-// GUI Layout
+// gui Layout
 void CreateChatUI(HWND hwnd) {
     CreateWindow("STATIC", "IP Address:", WS_VISIBLE | WS_CHILD, 10, 10, 100, 20, hwnd, NULL, NULL, NULL);
     hIPBox = CreateWindow("EDIT", "127.0.0.1", WS_VISIBLE | WS_CHILD | WS_BORDER, 120, 10, 200, 20, hwnd, NULL, NULL, NULL);
@@ -88,7 +88,7 @@ void CreateChatUI(HWND hwnd) {
 
 
 
-// Main GUI Handler
+// Main gui handler
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     switch (msg) {
         case WM_CREATE:
@@ -156,7 +156,7 @@ DWORD WINAPI ServerThread(LPVOID param) {
     sprintf(port_msg, "%d", port);
     SetWindowText(hPortBox, port_msg); // Update the port field in the GUI
 
-    // **Copy the port number to clipboard**
+    // copy the port number to clipboard**
     OpenClipboard(NULL);
     EmptyClipboard();
     HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, strlen(port_msg) + 1);
@@ -213,7 +213,7 @@ DWORD WINAPI ClientThread(LPVOID param) {
     char ip[INET_ADDRSTRLEN];
     char port_str[6];
 
-    // **Get IP and Port from user input**
+    // get IP and port from user input**
     GetWindowText(hIPBox, ip, INET_ADDRSTRLEN);
     GetWindowText(hPortBox, port_str, 6); // Get port from the input field
     int port = atoi(port_str); // Convert to integer
@@ -288,10 +288,10 @@ void SendMessageGUI() {
         return;
     }
 
-    // Append "(You)" to show it was sent by this user
+    // Append "You" to show it was sent by this user
     strcat(buffer, " (You)\r\n");
 
-    // **Safely update chat box**
+    // Safely update chat box**
     SendMessage(hChatBox, EM_SETSEL, -1, -1);  // Move cursor to end
     SendMessage(hChatBox, EM_REPLACESEL, 0, (LPARAM)buffer);
 
