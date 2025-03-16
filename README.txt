@@ -1,4 +1,4 @@
-###
+### For [sec_msg.c & windows_sec_msg.c]
 >compile on linux:
 open a terminal
 locate sec_msg.c
