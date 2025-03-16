@@ -5,21 +5,44 @@
 #include <windows.h>
 #include <ws2tcpip.h>
 #include <pthread.h>
-#include <openssl/ssl.h>
-#include <openssl/err.h>
-#include <openssl/x509.h>
-#include <openssl/pem.h>
+
+#define SECURITY_WIN32
+#include <security.h>
+#include <sspi.h>
 
 #pragma comment(lib, "ws2_32.lib")
+#pragma comment(lib, "secur32.lib")
+#pragma comment(lib, "crypt32.lib")
 
 #define PORT 4444
 #define BUFFER_SIZE 1024
+#define SCHANNEL_CRED_VERSION 4
+#define SP_PROT_TLS1_2 0x00000800
+#define UNISP_NAME "Microsoft Unified Security Protocol Provider"
 
-// GUI Global Variables
+// Manually define SCHANNEL_CRED (MinGW-W64 does not provide it)
+typedef struct _SCHANNEL_CRED {
+    DWORD dwVersion;
+    DWORD cCreds;
+    PVOID *paCred;
+    HCERTSTORE hRootStore;
+    DWORD cMappers;
+    PVOID *aphMappers;
+    DWORD cSupportedAlgs;
+    ALG_ID *palSupportedAlgs;
+    DWORD grbitEnabledProtocols;
+    DWORD dwMinimumCipherStrength;
+    DWORD dwMaximumCipherStrength;
+    DWORD dwSessionLifespan;
+    DWORD dwFlags;
+    DWORD dwCredFormat;
+} SCHANNEL_CRED;
+
+// GUI Elements
 HWND hwnd, hChatBox, hMessageBox, hSendButton, hIPBox, hConnectButton, hWaitButton;
 SOCKET global_socket;
-SSL *global_ssl;
-SSL_CTX *ctx;
+CredHandle hCred;
+CtxtHandle hCtxt;
 int isServer = 0;
 
 // Function Declarations
@@ -27,149 +50,39 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 DWORD WINAPI ServerThread(LPVOID param);
 DWORD WINAPI ClientThread(LPVOID param);
 void SendMessageGUI();
-SSL_CTX *initialize_ssl_context(int isServer);
-void generate_self_signed_cert(const char *cert_file, const char *key_file);
-void cleanup_files();
+SECURITY_STATUS InitTLS(SOCKET sock, int isServer);
+void CleanupTLS();
 
-// Function to Generate Self-Signed Certificate
-void generate_self_signed_cert(const char *cert_file, const char *key_file) {
-    EVP_PKEY *pkey = EVP_PKEY_new();
-    RSA *rsa = RSA_new();
-    BIGNUM *e = BN_new();
-    BN_set_word(e, RSA_F4);
-    RSA_generate_key_ex(rsa, 2048, e, NULL);
-    EVP_PKEY_assign_RSA(pkey, rsa);
+// Initialize TLS (Schannel)
+SECURITY_STATUS InitTLS(SOCKET sock, int isServer) {
+    SCHANNEL_CRED schCred;
+    memset(&schCred, 0, sizeof(schCred));
+    schCred.dwVersion = SCHANNEL_CRED_VERSION;
+    schCred.grbitEnabledProtocols = SP_PROT_TLS1_2;
 
-    X509 *x509 = X509_new();
-    X509_set_version(x509, 2);
-    ASN1_INTEGER_set(X509_get_serialNumber(x509), 1);
-    X509_gmtime_adj(X509_get_notBefore(x509), 0);
-    X509_gmtime_adj(X509_get_notAfter(x509), 31536000L);
-    X509_set_pubkey(x509, pkey);
-
-    X509_NAME *name = X509_get_subject_name(x509);
-    X509_NAME_add_entry_by_txt(name, "C", MBSTRING_ASC, (unsigned char *)"US", -1, -1, 0);
-    X509_NAME_add_entry_by_txt(name, "CN", MBSTRING_ASC, (unsigned char *)"Secure Chat", -1, -1, 0);
-    X509_set_issuer_name(x509, name);
-    X509_sign(x509, pkey, EVP_sha256());
-
-    FILE *cert_fp = fopen(cert_file, "wb");
-    PEM_write_X509(cert_fp, x509);
-    fclose(cert_fp);
-
-    FILE *key_fp = fopen(key_file, "wb");
-    PEM_write_PrivateKey(key_fp, pkey, NULL, NULL, 0, NULL, NULL);
-    fclose(key_fp);
-
-    EVP_PKEY_free(pkey);
-    RSA_free(rsa);
-    BN_free(e);
-    X509_free(x509);
+    return AcquireCredentialsHandle(
+        NULL, UNISP_NAME, isServer ? SECPKG_CRED_INBOUND : SECPKG_CRED_OUTBOUND,
+        NULL, &schCred, NULL, NULL, &hCred, NULL);
 }
 
-// Initialize SSL Context
-SSL_CTX *initialize_ssl_context(int isServer) {
-    SSL_CTX *ctx = SSL_CTX_new(isServer ? TLS_server_method() : TLS_client_method());
-    if (!ctx) {
-        ERR_print_errors_fp(stderr);
-        exit(EXIT_FAILURE);
-    }
+// GUI Layout
+void CreateChatUI(HWND hwnd) {
+    CreateWindow("STATIC", "IP Address:", WS_VISIBLE | WS_CHILD, 10, 10, 100, 20, hwnd, NULL, NULL, NULL);
+    hIPBox = CreateWindow("EDIT", "", WS_VISIBLE | WS_CHILD | WS_BORDER, 120, 10, 200, 20, hwnd, NULL, NULL, NULL);
 
-    generate_self_signed_cert("temp_server.crt", "temp_server.key");
+    CreateWindow("STATIC", "Chat:", WS_VISIBLE | WS_CHILD, 10, 40, 100, 20, hwnd, NULL, NULL, NULL);
+    hChatBox = CreateWindow("EDIT", "", WS_VISIBLE | WS_CHILD | WS_BORDER | ES_MULTILINE | ES_READONLY | WS_VSCROLL, 
+                            10, 60, 380, 200, hwnd, NULL, NULL, NULL);
 
-    if (isServer) {
-        if (SSL_CTX_use_certificate_file(ctx, "temp_server.crt", SSL_FILETYPE_PEM) <= 0 ||
-            SSL_CTX_use_PrivateKey_file(ctx, "temp_server.key", SSL_FILETYPE_PEM) <= 0) {
-            ERR_print_errors_fp(stderr);
-        exit(EXIT_FAILURE);
-            }
-    }
-    return ctx;
+    CreateWindow("STATIC", "Message:", WS_VISIBLE | WS_CHILD, 10, 270, 100, 20, hwnd, NULL, NULL, NULL);
+    hMessageBox = CreateWindow("EDIT", "", WS_VISIBLE | WS_CHILD | WS_BORDER, 120, 270, 200, 20, hwnd, NULL, NULL, NULL);
+
+    hSendButton = CreateWindow("BUTTON", "Send", WS_VISIBLE | WS_CHILD, 330, 270, 60, 20, hwnd, (HMENU)1, NULL, NULL);
+    hConnectButton = CreateWindow("BUTTON", "Connect", WS_VISIBLE | WS_CHILD, 10, 300, 80, 30, hwnd, (HMENU)2, NULL, NULL);
+    hWaitButton = CreateWindow("BUTTON", "Wait", WS_VISIBLE | WS_CHILD, 100, 300, 80, 30, hwnd, (HMENU)3, NULL, NULL);
 }
 
-// Server Function
-DWORD WINAPI ServerThread(LPVOID param) {
-    WSADATA wsa;
-    WSAStartup(MAKEWORD(2, 2), &wsa);
-
-    SOCKET server_fd, client_socket;
-    struct sockaddr_in server_addr, client_addr;
-    int addr_size = sizeof(client_addr);
-
-    ctx = initialize_ssl_context(1);
-    server_fd = socket(AF_INET, SOCK_STREAM, 0);
-
-    server_addr.sin_family = AF_INET;
-    server_addr.sin_addr.s_addr = INADDR_ANY;
-    server_addr.sin_port = htons(PORT);
-
-    bind(server_fd, (struct sockaddr *)&server_addr, sizeof(server_addr));
-    listen(server_fd, 1);
-
-    client_socket = accept(server_fd, (struct sockaddr *)&client_addr, &addr_size);
-    global_socket = client_socket;
-
-    global_ssl = SSL_new(ctx);
-    SSL_set_fd(global_ssl, client_socket);
-    SSL_accept(global_ssl);
-
-    char buffer[BUFFER_SIZE];
-    int bytes_read;
-    while ((bytes_read = SSL_read(global_ssl, buffer, sizeof(buffer) - 1)) > 0) {
-        buffer[bytes_read] = '\0';
-        SendMessage(hChatBox, WM_SETTEXT, 0, (LPARAM)buffer);
-    }
-
-    SSL_shutdown(global_ssl);
-    SSL_free(global_ssl);
-    closesocket(client_socket);
-    return 0;
-}
-
-// Client Function
-DWORD WINAPI ClientThread(LPVOID param) {
-    WSADATA wsa;
-    WSAStartup(MAKEWORD(2, 2), &wsa);
-
-    char *ip = (char *)param;
-    SOCKET client_socket;
-    struct sockaddr_in server_addr;
-
-    ctx = initialize_ssl_context(0);
-    client_socket = socket(AF_INET, SOCK_STREAM, 0);
-
-    server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(PORT);
-    inet_pton(AF_INET, ip, &server_addr.sin_addr);
-
-    connect(client_socket, (struct sockaddr *)&server_addr, sizeof(server_addr));
-    global_socket = client_socket;
-
-    global_ssl = SSL_new(ctx);
-    SSL_set_fd(global_ssl, client_socket);
-    SSL_connect(global_ssl);
-
-    char buffer[BUFFER_SIZE];
-    int bytes_read;
-    while ((bytes_read = SSL_read(global_ssl, buffer, sizeof(buffer) - 1)) > 0) {
-        buffer[bytes_read] = '\0';
-        SendMessage(hChatBox, WM_SETTEXT, 0, (LPARAM)buffer);
-    }
-
-    SSL_shutdown(global_ssl);
-    SSL_free(global_ssl);
-    closesocket(client_socket);
-    return 0;
-}
-
-// Sends a Message
-void SendMessageGUI() {
-    char buffer[BUFFER_SIZE];
-    GetWindowText(hMessageBox, buffer, BUFFER_SIZE);
-    SSL_write(global_ssl, buffer, strlen(buffer));
-}
-
-// Main Windows GUI Loop
+// Main GUI Handler
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     switch (msg) {
         case WM_COMMAND:
@@ -186,14 +99,79 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                 CreateThread(NULL, 0, ServerThread, NULL, 0, NULL);
             }
             break;
+        case WM_CREATE:
+            CreateChatUI(hwnd);
+            break;
         case WM_DESTROY:
-            cleanup_files();
+            CleanupTLS();
             PostQuitMessage(0);
             break;
         default:
             return DefWindowProc(hwnd, msg, wParam, lParam);
     }
     return 0;
+}
+
+// Server Function
+DWORD WINAPI ServerThread(LPVOID param) {
+    WSADATA wsa;
+    WSAStartup(MAKEWORD(2, 2), &wsa);
+
+    SOCKET server_fd, client_socket;
+    struct sockaddr_in server_addr, client_addr;
+    int addr_size = sizeof(client_addr);
+
+    server_fd = socket(AF_INET, SOCK_STREAM, 0);
+    bind(server_fd, (struct sockaddr *)&server_addr, sizeof(server_addr));
+    listen(server_fd, 1);
+
+    client_socket = accept(server_fd, (struct sockaddr *)&client_addr, &addr_size);
+    global_socket = client_socket;
+
+    char buffer[BUFFER_SIZE];
+    while (recv(global_socket, buffer, sizeof(buffer) - 1, 0) > 0) {
+        strcat(buffer, "\r\n");
+        SendMessage(hChatBox, EM_REPLACESEL, 0, (LPARAM)buffer);
+    }
+
+    closesocket(client_socket);
+    return 0;
+}
+
+// Client Function
+DWORD WINAPI ClientThread(LPVOID param) {
+    WSADATA wsa;
+    WSAStartup(MAKEWORD(2, 2), &wsa);
+
+    char *ip = (char *)param;
+    SOCKET client_socket;
+    struct sockaddr_in server_addr;
+
+    client_socket = socket(AF_INET, SOCK_STREAM, 0);
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(PORT);
+    inet_pton(AF_INET, ip, &server_addr.sin_addr);
+    connect(client_socket, (struct sockaddr *)&server_addr, sizeof(server_addr));
+    global_socket = client_socket;
+
+    char buffer[BUFFER_SIZE];
+    while (recv(global_socket, buffer, sizeof(buffer) - 1, 0) > 0) {
+        strcat(buffer, "\r\n");
+        SendMessage(hChatBox, EM_REPLACESEL, 0, (LPARAM)buffer);
+    }
+
+    closesocket(client_socket);
+    return 0;
+}
+
+// Sends a Message
+void SendMessageGUI() {
+    char buffer[BUFFER_SIZE];
+    GetWindowText(hMessageBox, buffer, BUFFER_SIZE);
+    send(global_socket, buffer, strlen(buffer), 0);
+    strcat(buffer, " (You)\r\n");
+    SendMessage(hChatBox, EM_REPLACESEL, 0, (LPARAM)buffer);
+    SetWindowText(hMessageBox, "");
 }
 
 // Entry Point
@@ -204,8 +182,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     wc.lpszClassName = "SecureChat";
 
     RegisterClass(&wc);
-    hwnd = CreateWindow("SecureChat", "Secure Chat", WS_OVERLAPPEDWINDOW, 100, 100, 400, 400, NULL, NULL, hInstance, NULL);
-
+    hwnd = CreateWindow("SecureChat", "Secure Chat", WS_OVERLAPPEDWINDOW, 100, 100, 420, 380, NULL, NULL, hInstance, NULL);
+    
     ShowWindow(hwnd, nCmdShow);
     UpdateWindow(hwnd);
 
@@ -218,8 +196,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     return 0;
 }
 
-// Function to Delete Temporary Certs
-void cleanup_files() {
-    remove("temp_server.crt");
-    remove("temp_server.key");
+void CleanupTLS() {
+    FreeCredentialsHandle(&hCred);
+    DeleteSecurityContext(&hCtxt);
+    WSACleanup();
 }
