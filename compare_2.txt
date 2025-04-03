@@ -1,0 +1,2 @@
+Cybersecurity involves defending systems and networks from digital threats.
+Most attacks try to gain access to sensitive data or disrupt normal operations.
